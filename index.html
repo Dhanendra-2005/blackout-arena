@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackout Arena — Free Fire Tournaments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --jungle: #0D1410;
+    --moss: #16241A;
+    --moss-light: #1F3324;
+    --ember: #FF6B35;
+    --ember-dim: #B84E24;
+    --sand: #C9B896;
+    --bone: #EDE6D6;
+    --blood: #7A2323;
+    --line: rgba(201,184,150,0.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--jungle);
+    color:var(--bone);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Oswald', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+    font-weight:600;
+    margin:0;
+    color:var(--bone);
+  }
+  a{color:inherit;}
+  .wrap{max-width:1100px; margin:0 auto; padding:0 24px;}
+  button{font-family:inherit; cursor:pointer;}
+
+  /* ===== NAV ===== */
+  nav{
+    position:sticky; top:0; z-index:50;
+    background:rgba(13,20,16,0.92);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  nav .wrap{display:flex; align-items:center; justify-content:space-between; height:64px;}
+  .brand{display:flex; align-items:center; gap:10px; font-family:'Oswald'; font-size:19px; letter-spacing:0.03em; text-transform:uppercase;}
+  .brand-mark{width:14px;height:14px; background:var(--ember); clip-path:polygon(50% 0%, 0% 100%, 100% 100%);}
+  .navlinks{display:flex; gap:28px; font-size:14px; color:var(--sand);}
+  .navlinks a{text-decoration:none; transition:color .15s;}
+  .navlinks a:hover{color:var(--ember);}
+  .btn-primary{
+    background:var(--ember); color:var(--jungle); border:none;
+    padding:11px 22px; font-weight:600; font-size:14px;
+    clip-path:polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+  .btn-primary:hover{background:#ff7f52;}
+  .btn-ghost{
+    background:transparent; color:var(--bone); border:1px solid var(--line);
+    padding:10px 20px; font-size:14px;
+  }
+  .btn-ghost:hover{border-color:var(--ember); color:var(--ember);}
+
+  /* ===== HERO ===== */
+  .hero{padding:72px 0 88px; position:relative; overflow:hidden;}
+  .hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:48px; align-items:center;}
+  .eyebrow-line{color:var(--ember); font-size:14px; font-weight:500; margin-bottom:14px; letter-spacing:0.01em;}
+  .hero h1{font-size:56px; line-height:1.03; margin-bottom:20px;}
+  .hero p.lead{color:var(--sand); font-size:17px; max-width:46ch; margin-bottom:32px;}
+  .hero-ctas{display:flex; gap:14px; margin-bottom:36px;}
+  .hero-stats{display:flex; gap:36px;}
+  .hero-stat b{display:block; font-family:'Oswald'; font-size:26px; color:var(--bone);}
+  .hero-stat span{font-size:13px; color:var(--sand);}
+
+  /* Zone ring */
+  .zone-wrap{display:flex; align-items:center; justify-content:center; position:relative;}
+  .zone-ring{position:relative; width:340px; height:340px;}
+  .zone-ring svg{width:100%; height:100%; transform:rotate(-90deg);}
+  .zone-ring .track{fill:none; stroke:rgba(201,184,150,0.12); stroke-width:2;}
+  .zone-ring .fill{fill:none; stroke:var(--ember); stroke-width:2; stroke-linecap:round; transition:stroke-dashoffset 1s linear;}
+  .zone-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+  .zone-center .label{font-size:12px; letter-spacing:0.08em; color:var(--sand); text-transform:uppercase; margin-bottom:6px;}
+  .zone-center .time{font-family:'Oswald'; font-size:42px; color:var(--bone); font-variant-numeric:tabular-nums;}
+  .zone-center .sub{font-size:13px; color:var(--ember); margin-top:6px;}
+
+  /* ===== SECTION HEADS ===== */
+  .section{padding:76px 0; border-top:1px solid var(--line);}
+  .section-head{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:36px; gap:20px; flex-wrap:wrap;}
+  .section-head h2{font-size:34px;}
+  .section-head p{color:var(--sand); font-size:15px; max-width:50ch;}
+
+  /* ===== TOURNAMENT CARDS ===== */
+  .t-list{display:flex; flex-direction:column; border:1px solid var(--line);}
+  .t-row{
+    display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr auto;
+    gap:16px; align-items:center; padding:22px 24px;
+    border-bottom:1px solid var(--line);
+    transition:background .15s;
+  }
+  .t-row:last-child{border-bottom:none;}
+  .t-row:hover{background:var(--moss);}
+  .t-name{font-family:'Oswald'; font-size:18px;}
+  .t-mode{font-size:13px; color:var(--sand); margin-top:3px;}
+  .t-col-label{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--sand); margin-bottom:3px;}
+  .t-col-val{font-family:'Oswald'; font-size:16px;}
+  .status-pill{
+    display:inline-block; font-size:11px; padding:4px 10px; text-transform:uppercase; letter-spacing:0.05em;
+    border:1px solid currentColor;
+  }
+  .status-open{color:var(--ember);}
+  .status-live{color:#7FBF6A;}
+  .status-closed{color:var(--sand); opacity:0.6;}
+
+  /* ===== REGISTRATION ===== */
+  .reg-panel{
+    display:grid; grid-template-columns:0.9fr 1.1fr; gap:0;
+    border:1px solid var(--line); background:var(--moss);
+  }
+  .reg-side{padding:40px; border-right:1px solid var(--line); background:var(--moss-light);}
+  .reg-side h3{font-size:24px; margin-bottom:14px;}
+  .reg-side p{color:var(--sand); font-size:14px; margin-bottom:22px;}
+  .reg-rules{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:12px;}
+  .reg-rules li{display:flex; gap:10px; font-size:13.5px; color:var(--bone);}
+  .reg-rules li::before{content:''; width:6px; height:6px; background:var(--ember); margin-top:6px; flex-shrink:0; clip-path:polygon(50% 0, 0 100%, 100% 100%);}
+  .reg-form{padding:40px; display:flex; flex-direction:column; gap:16px;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  label{font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--sand); display:block; margin-bottom:7px;}
+  input, select{
+    width:100%; background:var(--jungle); border:1px solid var(--line); color:var(--bone);
+    padding:11px 12px; font-family:inherit; font-size:14px;
+  }
+  input:focus, select:focus{outline:2px solid var(--ember); outline-offset:1px; border-color:var(--ember);}
+  .submit-row{display:flex; align-items:center; gap:16px; margin-top:6px;}
+  .form-note{font-size:13px; color:var(--sand);}
+  .confirm-box{
+    display:none; border:1px solid var(--ember); background:rgba(255,107,53,0.08);
+    padding:18px; font-size:14px; margin-top:6px;
+  }
+  .confirm-box b{color:var(--ember);}
+
+  /* ===== LEADERBOARD ===== */
+  .lb-table{width:100%; border-collapse:collapse; border:1px solid var(--line);}
+  .lb-table th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--sand);
+    padding:14px 20px; border-bottom:1px solid var(--line); font-weight:500;
+  }
+  .lb-table td{padding:16px 20px; border-bottom:1px solid var(--line); font-size:14px;}
+  .lb-table tr:last-child td{border-bottom:none;}
+  .lb-table tr:hover td{background:var(--moss);}
+  .rank-num{font-family:'Oswald'; font-size:17px; color:var(--ember); width:30px; display:inline-block;}
+  .team-cell{font-family:'Oswald'; font-size:15px;}
+  .points-cell{font-family:'Oswald'; font-size:16px; color:var(--bone);}
+
+  /* ===== FOOTER ===== */
+  footer{border-top:1px solid var(--line); padding:40px 0; }
+  footer .wrap{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;}
+  footer p{color:var(--sand); font-size:13px;}
+
+  @media (max-width: 860px){
+    .hero-grid{grid-template-columns:1fr;}
+    .zone-wrap{order:-1;}
+    .hero h1{font-size:38px;}
+    .t-row{grid-template-columns:1fr 1fr; row-gap:10px;}
+    .t-row > div:nth-child(4){display:none;}
+    .reg-panel{grid-template-columns:1fr;}
+    .reg-side{border-right:none; border-bottom:1px solid var(--line);}
+    .field-row{grid-template-columns:1fr;}
+    .navlinks{display:none;}
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="brand-mark"></span> BLACKOUT ARENA</div>
+    <div class="navlinks">
+      <a href="#tournaments">Tournaments</a>
+      <a href="#register">Register</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="#rules">Rules</a>
+    </div>
+    <button class="btn-primary" onclick="document.getElementById('register').scrollIntoView({behavior:'smooth'})">Enter a squad</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow-line">Season 4 · Booyah League</div>
+      <h1>The zone is closing.<br>Get your squad in.</h1>
+      <p class="lead">Solo, duo, and squad Free Fire tournaments with real prize pools, verified brackets, and results posted within the hour. No spreadsheets, no DMs — just sign up and drop in.</p>
+      <div class="hero-ctas">
+        <button class="btn-primary" onclick="document.getElementById('register').scrollIntoView({behavior:'smooth'})">Register your squad</button>
+        <button class="btn-ghost" onclick="document.getElementById('tournaments').scrollIntoView({behavior:'smooth'})">See open brackets</button>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><b>₹11,500</b><span>Prize pool this season</span></div>
+        <div class="hero-stat"><b>63</b><span>Teams registered</span></div>
+        <div class="hero-stat"><b>5</b><span>Tournaments this season</span></div>
+      </div>
+    </div>
+    <div class="zone-wrap">
+      <div class="zone-ring">
+        <svg viewBox="0 0 120 120">
+          <circle class="track" cx="60" cy="60" r="54"></circle>
+          <circle class="fill" id="zoneFill" cx="60" cy="60" r="54"></circle>
+        </svg>
+        <div class="zone-center">
+          <div class="label">Registration closes in</div>
+          <div class="time" id="zoneTime">--:--:--</div>
+          <div class="sub">Squad Showdown · Map: Bermuda</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="tournaments">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <h2>Open brackets</h2>
+        <p>Pick a tournament, check the entry fee and slot count, then register below.</p>
+      </div>
+    </div>
+    <div class="t-list" id="tList"></div>
+  </div>
+</section>
+
+<section class="section" id="register">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <h2>Register your squad</h2>
+        <p>Fill this in once per team. You'll get a confirmation with your match slot and room ID by email one hour before your match.</p>
+      </div>
+    </div>
+    <div class="reg-panel">
+      <div class="reg-side">
+        <h3>Before you register</h3>
+        <ul class="reg-rules">
+          <li>Team leader must submit a valid in-game UID for every player.</li>
+          <li>Entry fee confirms your slot — refunded in full if the bracket doesn't fill.</li>
+          <li>Room ID and password are sent 60 minutes before match time. Check your email/WhatsApp.</li>
+          <li>Emulator use is banned in mobile-only brackets and results in disqualification.</li>
+          <li>Screenshot your placement + kill count at match end in case of a dispute.</li>
+        </ul>
+      </div>
+      <form class="reg-form" id="regForm">
+        <div class="field-row">
+          <div>
+            <label for="teamName">Team name</label>
+            <input id="teamName" required placeholder="e.g. Ember Squad">
+          </div>
+          <div>
+            <label for="tourneySelect">Tournament</label>
+            <select id="tourneySelect" required></select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div>
+            <label for="leaderName">Team leader name</label>
+            <input id="leaderName" required placeholder="Full name">
+          </div>
+          <div>
+            <label for="leaderContact">WhatsApp / email</label>
+            <input id="leaderContact" required placeholder="For room ID delivery">
+          </div>
+        </div>
+        <div>
+          <label for="uids">Player in-game UIDs (comma separated)</label>
+          <input id="uids" required placeholder="e.g. 51023xxxx, 51044xxxx, 51099xxxx">
+        </div>
+        <div class="submit-row">
+          <button type="submit" class="btn-primary">Confirm registration</button>
+          <span class="form-note" id="feeNote">Select a tournament to see the entry fee.</span>
+        </div>
+        <div class="confirm-box" id="confirmBox"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="leaderboard">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <h2>Season 4 leaderboard</h2>
+        <p>Points = placement points + kill points, summed across all completed matches this season.</p>
+      </div>
+    </div>
+    <table class="lb-table">
+      <thead>
+        <tr><th>Rank</th><th>Squad</th><th>Matches</th><th>Kills</th><th>Points</th></tr>
+      </thead>
+      <tbody id="lbBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" id="rules">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <h2>Match rules</h2>
+        <p>The short version — full ruleset is sent with your room ID.</p>
+      </div>
+    </div>
+    <div class="t-list">
+      <div class="t-row" style="grid-template-columns:1fr;">
+        <div>
+          <div class="t-name" style="margin-bottom:6px;">Scoring</div>
+          <div class="t-mode">Placement points follow standard Booyah League scoring (1st: 15, 2nd: 12, down to 10th: 1). Each kill is worth 1 point. Ties are broken by total kills, then by earliest match completion.</div>
+        </div>
+      </div>
+      <div class="t-row" style="grid-template-columns:1fr;">
+        <div>
+          <div class="t-name" style="margin-bottom:6px;">Fair play</div>
+          <div class="t-mode">No emulators in mobile-only brackets, no teaming with rival squads, no exploiting map glitches. Reports are reviewed within 24 hours with screenshot evidence from both sides.</div>
+        </div>
+      </div>
+      <div class="t-row" style="grid-template-columns:1fr;">
+        <div>
+          <div class="t-name" style="margin-bottom:6px;">No-shows</div>
+          <div class="t-mode">Squads not in the custom room within 5 minutes of room ID release forfeit that match. No refunds for no-shows.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand"><span class="brand-mark"></span> BLACKOUT ARENA</div>
+    <p>This is a prototype build — payments and room ID delivery are illustrative, not live.</p>
+  </div>
+</footer>
+
+<script>
+  // ----- Supabase config -----
+  // 1. Create a project at supabase.com (free tier)
+  // 2. Run the SQL in registrations-schema.sql (provided alongside this file)
+  // 3. Paste your Project URL and anon public key below (Project Settings -> API)
+  const SUPABASE_URL = "https://ysglmwjdvbtmbibokbnv.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzZ2xtd2pkdmJ0bWJpYm9rYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5Mzg3OTIsImV4cCI6MjEwNDUxNDc5Mn0._prv2ph7f1y2iJ_PiAQzxt8ykSEUB0-5XSVsb5Inujk";
+
+  let supabaseClient = null;
+  const dbConfigured = !SUPABASE_URL.startsWith("PASTE_") && !SUPABASE_ANON_KEY.startsWith("PASTE_");
+  if (dbConfigured && window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  // ----- Data -----
+  // Add your own Razorpay Payment Link for each tournament (create these free
+  // at dashboard.razorpay.com -> Payment Links -> + Create Payment Link).
+  // Leave as null for free-entry tournaments.
+  const tournaments = [
+    { id:'t1', name:'Squad Showdown', mode:'Squad · Bermuda', fee:'₹200 / team', slots:'9 / 12', prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/bD4TI5AX" },
+    { id:'t2', name:'Duo Blitz Cup', mode:'Duo · Purgatory', fee:'₹100 / team', slots:'18 / 24', prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/jN6r2M7p" },
+    { id:'t3', name:'Solo Sniper Series', mode:'Solo · Kalahari', fee:'Free entry', slots:'40 / 48', prize:'₹1,000', status:'open', paymentLink:null },
+    { id:'t4', name:'Clash Squad Weekly', mode:'Squad · CS Mode', fee:'₹150 / team', slots:'12 / 12', prize:'₹1,500', status:'closed', paymentLink:null },
+    { id:'t5', name:'Booyah Invitational', mode:'Squad · Bermuda', fee:'₹500 / team', slots:'12 / 12', prize:'₹5,000', status:'live', paymentLink:null },
+  ];
+
+  const leaderboard = [
+    { team:'Ember Squad', matches:6, kills:71, points:142 },
+    { team:'Zone Reapers', matches:6, kills:63, points:128 },
+    { team:'Ghost Bermuda', matches:5, kills:58, points:119 },
+    { team:'Kalahari Kings', matches:6, kills:52, points:104 },
+    { team:'Nightfall Five', matches:6, kills:49, points:97 },
+    { team:'Sandline Crew', matches:5, kills:44, points:88 },
+  ];
+
+  // ----- Render tournaments -----
+  const tList = document.getElementById('tList');
+  const tourneySelect = document.getElementById('tourneySelect');
+  const statusMap = { open:'status-open', live:'status-live', closed:'status-closed' };
+  const statusLabel = { open:'Open', live:'Live now', closed:'Full' };
+
+  tournaments.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 't-row';
+    row.innerHTML = `
+      <div>
+        <div class="t-name">${t.name}</div>
+        <div class="t-mode">${t.mode}</div>
+      </div>
+      <div>
+        <div class="t-col-label">Entry fee</div>
+        <div class="t-col-val">${t.fee}</div>
+      </div>
+      <div>
+        <div class="t-col-label">Slots filled</div>
+        <div class="t-col-val">${t.slots}</div>
+      </div>
+      <div>
+        <div class="t-col-label">Prize pool</div>
+        <div class="t-col-val">${t.prize}</div>
+      </div>
+      <div><span class="status-pill ${statusMap[t.status]}">${statusLabel[t.status]}</span></div>
+    `;
+    tList.appendChild(row);
+
+    if (t.status === 'open') {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = `${t.name} — ${t.fee}`;
+      opt.dataset.fee = t.fee;
+      opt.dataset.paymentLink = t.paymentLink || '';
+      tourneySelect.appendChild(opt);
+    }
+  });
+
+  const feeNote = document.getElementById('feeNote');
+  function updateFeeNote(){
+    const opt = tourneySelect.options[tourneySelect.selectedIndex];
+    if(opt) feeNote.textContent = `Entry fee: ${opt.dataset.fee}. Payment link is sent after you submit this form.`;
+  }
+  tourneySelect.addEventListener('change', updateFeeNote);
+  updateFeeNote();
+
+  // ----- Registration form -----
+  document.getElementById('regForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const box = document.getElementById('confirmBox');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    const teamName = document.getElementById('teamName').value.trim();
+    const tourneyOpt = tourneySelect.options[tourneySelect.selectedIndex];
+    const tourneyName = tourneyOpt ? tourneyOpt.textContent.split(' — ')[0] : '';
+    const leaderName = document.getElementById('leaderName').value.trim();
+    const leaderContact = document.getElementById('leaderContact').value.trim();
+    const uids = document.getElementById('uids').value.trim();
+
+    if (!dbConfigured) {
+      box.style.display = 'block';
+      box.innerHTML = `<b>Database not connected yet.</b> This form is ready to save real registrations \u2014 add your Supabase URL and anon key in the script (see comments near the top) to start storing them for real. For now, here's what would be saved: ${teamName}, ${tourneyName}, ${leaderName}.`;
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    const { error } = await supabaseClient.from('registrations').insert({
+      team_name: teamName,
+      tournament: tourneyName,
+      leader_name: leaderName,
+      leader_contact: leaderContact,
+      player_uids: uids
+    });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Confirm registration';
+    box.style.display = 'block';
+
+    if (error) {
+      box.innerHTML = `<b>Something went wrong.</b> ${error.message}. Check that your Supabase table and column names match the schema, and that row-level security allows inserts.`;
+      return;
+    }
+
+    const feeText = tourneyOpt ? tourneyOpt.dataset.fee : '';
+    const paymentLink = tourneyOpt ? tourneyOpt.dataset.paymentLink : '';
+
+    if (feeText === 'Free entry' || !feeText) {
+      box.innerHTML = `<b>Registration received \u2014 you're in.</b> ${teamName} is confirmed for ${tourneyName}. Room ID and password will be sent to ${leaderContact} an hour before your match.`;
+    } else if (paymentLink) {
+      box.innerHTML = `<b>Almost there.</b> ${teamName}'s spot in ${tourneyName} is saved but not yet confirmed. <a href="${paymentLink}" target="_blank" rel="noopener" style="color:var(--ember); text-decoration:underline;">Pay the ${feeText} entry fee here</a> and put "${teamName}" in the payment note so we can match it to your registration.`;
+    } else {
+      box.innerHTML = `<b>Registration saved.</b> ${teamName} is on the list for ${tourneyName} (entry fee: ${feeText}). Payment isn't connected yet \u2014 the organizer needs to add a Razorpay Payment Link for this tournament.`;
+    }
+    e.target.reset();
+    updateFeeNote();
+  });
+
+  // ----- Leaderboard -----
+  const lbBody = document.getElementById('lbBody');
+  leaderboard.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="rank-num">${String(i+1).padStart(2,'0')}</span></td>
+      <td class="team-cell">${row.team}</td>
+      <td>${row.matches}</td>
+      <td>${row.kills}</td>
+      <td class="points-cell">${row.points}</td>
+    `;
+    lbBody.appendChild(tr);
+  });
+
+  // ----- Zone countdown ring -----
+  const CIRC = 2 * Math.PI * 54;
+  const zoneFill = document.getElementById('zoneFill');
+  const zoneTime = document.getElementById('zoneTime');
+  zoneFill.style.strokeDasharray = CIRC;
+
+  // Fake countdown: 6 hours from page load, purely illustrative
+  const totalSeconds = 6 * 3600;
+  let remaining = totalSeconds;
+
+  function tick(){
+    if(remaining <= 0){
+      zoneTime.textContent = 'CLOSED';
+      return;
+    }
+    remaining--;
+    const h = Math.floor(remaining/3600);
+    const m = Math.floor((remaining%3600)/60);
+    const s = remaining%60;
+    zoneTime.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    const frac = remaining / totalSeconds;
+    zoneFill.style.strokeDashoffset = CIRC * (1 - frac);
+  }
+  zoneFill.style.strokeDashoffset = 0;
+  tick();
+  setInterval(tick, 1000);
+</script>
+
+</body>
+</html>

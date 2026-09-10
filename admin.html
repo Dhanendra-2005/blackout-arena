@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Blackout Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --jungle:#0D1410; --moss:#16241A; --moss-light:#1F3324;
+    --ember:#FF6B35; --sand:#C9B896; --bone:#EDE6D6; --blood:#7A2323;
+    --good:#7FBF6A; --line:rgba(201,184,150,0.18);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--jungle); color:var(--bone); font-family:'IBM Plex Sans', sans-serif;}
+  h1,h2,.display{font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:0.02em; margin:0;}
+  .wrap{max-width:1100px; margin:0 auto; padding:32px 24px;}
+  input, button{font-family:inherit; font-size:14px;}
+  input{background:var(--jungle); border:1px solid var(--line); color:var(--bone); padding:11px 12px; width:100%;}
+  input:focus{outline:2px solid var(--ember); outline-offset:1px; border-color:var(--ember);}
+  label{font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--sand); display:block; margin-bottom:7px;}
+  button{background:var(--ember); color:var(--jungle); border:none; padding:11px 20px; font-weight:600; cursor:pointer;}
+  button:hover{background:#ff7f52;}
+  button.secondary{background:transparent; color:var(--bone); border:1px solid var(--line);}
+  button.secondary:hover{border-color:var(--ember); color:var(--ember);}
+  button.danger{background:transparent; color:var(--blood); border:1px solid var(--blood);}
+  button.danger:hover{background:var(--blood); color:var(--bone);}
+
+  #loginScreen{max-width:380px; margin:12vh auto; padding:32px; border:1px solid var(--line); background:var(--moss);}
+  #loginScreen h1{font-size:24px; margin-bottom:8px;}
+  #loginScreen p{color:var(--sand); font-size:13.5px; margin-bottom:22px;}
+  #loginScreen .field{margin-bottom:16px;}
+  #loginError{color:var(--ember); font-size:13px; margin-top:10px; display:none;}
+
+  #adminScreen{display:none;}
+  .top-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:12px;}
+  .stat-row{display:flex; gap:28px; margin-bottom:28px; flex-wrap:wrap;}
+  .stat{border:1px solid var(--line); padding:16px 22px; min-width:140px;}
+  .stat b{display:block; font-family:'Oswald'; font-size:24px;}
+  .stat span{font-size:12px; color:var(--sand); text-transform:uppercase; letter-spacing:0.04em;}
+
+  table{width:100%; border-collapse:collapse; border:1px solid var(--line);}
+  th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--sand); padding:12px 16px; border-bottom:1px solid var(--line); font-weight:500;}
+  td{padding:13px 16px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:var(--moss);}
+  .pill{display:inline-block; font-size:11px; padding:4px 10px; text-transform:uppercase; letter-spacing:0.04em; border:1px solid currentColor; cursor:pointer;}
+  .pill.pending{color:var(--ember);}
+  .pill.paid{color:var(--good);}
+  .actions{display:flex; gap:8px;}
+  .actions button{padding:6px 10px; font-size:12px;}
+  #emptyMsg{color:var(--sand); padding:40px; text-align:center; border:1px solid var(--line); display:none;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <h1>Admin login</h1>
+  <p>Sign in with the account you used to create your Supabase project (add yourself as a user in Supabase Authentication first — see setup notes below).</p>
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" type="email" placeholder="you@example.com">
+  </div>
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" type="password" placeholder="••••••••">
+  </div>
+  <button id="loginBtn" style="width:100%;">Log in</button>
+  <div id="loginError"></div>
+</div>
+
+<div id="adminScreen">
+  <div class="wrap">
+    <div class="top-row">
+      <h1>Registrations</h1>
+      <button class="secondary" id="logoutBtn">Log out</button>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><b id="statTotal">0</b><span>Total registrations</span></div>
+      <div class="stat"><b id="statPaid">0</b><span>Marked paid</span></div>
+      <div class="stat"><b id="statPending">0</b><span>Pending payment</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Team</th><th>Tournament</th><th>Leader</th><th>Contact</th><th>UIDs</th><th>Payment</th><th>Submitted</th><th></th></tr>
+      </thead>
+      <tbody id="regBody"></tbody>
+    </table>
+    <div id="emptyMsg">No registrations yet.</div>
+  </div>
+</div>
+
+<script>
+  // ----- Paste the SAME Supabase URL and anon key you used in index.html -----
+  const SUPABASE_URL = "https://ysglmwjdvbtmbibokbnv.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzZ2xtd2pkdmJ0bWJpYm9rYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5Mzg3OTIsImV4cCI6MjEwNDUxNDc5Mn0._prv2ph7f1y2iJ_PiAQzxt8ykSEUB0-5XSVsb5Inujk";
+
+  const dbConfigured = !SUPABASE_URL.startsWith("PASTE_") && !SUPABASE_ANON_KEY.startsWith("PASTE_");
+  const supabaseClient = dbConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  const loginScreen = document.getElementById('loginScreen');
+  const adminScreen = document.getElementById('adminScreen');
+  const loginError = document.getElementById('loginError');
+
+  async function showAdminIfLoggedIn(){
+    if (!dbConfigured) {
+      loginError.style.display = 'block';
+      loginError.textContent = 'Supabase isn\'t connected yet — paste your Project URL and anon key into this file first.';
+      return;
+    }
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+      loginScreen.style.display = 'none';
+      adminScreen.style.display = 'block';
+      loadRegistrations();
+    }
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    if (!dbConfigured) return;
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      loginError.style.display = 'block';
+      loginError.textContent = error.message;
+      return;
+    }
+    loginScreen.style.display = 'none';
+    adminScreen.style.display = 'block';
+    loadRegistrations();
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    location.reload();
+  });
+
+  async function loadRegistrations(){
+    const { data, error } = await supabaseClient
+      .from('registrations')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    const body = document.getElementById('regBody');
+    const emptyMsg = document.getElementById('emptyMsg');
+    body.innerHTML = '';
+
+    if (error) {
+      emptyMsg.style.display = 'block';
+      emptyMsg.textContent = 'Could not load registrations: ' + error.message;
+      return;
+    }
+
+    document.getElementById('statTotal').textContent = data.length;
+    document.getElementById('statPaid').textContent = data.filter(r => r.payment_status === 'paid').length;
+    document.getElementById('statPending').textContent = data.filter(r => r.payment_status !== 'paid').length;
+
+    if (data.length === 0) {
+      emptyMsg.style.display = 'block';
+      return;
+    }
+    emptyMsg.style.display = 'none';
+
+    data.forEach(row => {
+      const tr = document.createElement('tr');
+      const submitted = new Date(row.created_at).toLocaleString();
+      const isPaid = row.payment_status === 'paid';
+      tr.innerHTML = `
+        <td>${row.team_name}</td>
+        <td>${row.tournament}</td>
+        <td>${row.leader_name}</td>
+        <td>${row.leader_contact}</td>
+        <td>${row.player_uids}</td>
+        <td><span class="pill ${isPaid ? 'paid' : 'pending'}" data-id="${row.id}" data-current="${row.payment_status}">${isPaid ? 'Paid' : 'Pending'}</span></td>
+        <td>${submitted}</td>
+        <td class="actions"><button class="danger" data-delete="${row.id}">Delete</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    // Toggle payment status on click
+    body.querySelectorAll('.pill').forEach(pill => {
+      pill.addEventListener('click', async () => {
+        const id = pill.dataset.id;
+        const next = pill.dataset.current === 'paid' ? 'pending' : 'paid';
+        await supabaseClient.from('registrations').update({ payment_status: next }).eq('id', id);
+        loadRegistrations();
+      });
+    });
+
+    // Delete row
+    body.querySelectorAll('[data-delete]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this registration? This cannot be undone.')) return;
+        await supabaseClient.from('registrations').delete().eq('id', btn.dataset.delete);
+        loadRegistrations();
+      });
+    });
+  }
+
+  showAdminIfLoggedIn();
+</script>
+
+</body>
+</html>
