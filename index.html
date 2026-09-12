@@ -346,8 +346,8 @@
   // 1. Create a project at supabase.com (free tier)
   // 2. Run the SQL in registrations-schema.sql (provided alongside this file)
   // 3. Paste your Project URL and anon public key below (Project Settings -> API)
-  const SUPABASE_URL = "https://ysglmwjdvbtmbibokbnv.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzZ2xtd2pkdmJ0bWJpYm9rYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5Mzg3OTIsImV4cCI6MjEwNDUxNDc5Mn0._prv2ph7f1y2iJ_PiAQzxt8ykSEUB0-5XSVsb5Inujk";
+  const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
 
   let supabaseClient = null;
   const dbConfigured = !SUPABASE_URL.startsWith("PASTE_") && !SUPABASE_ANON_KEY.startsWith("PASTE_");
@@ -360,11 +360,11 @@
   // at dashboard.razorpay.com -> Payment Links -> + Create Payment Link).
   // Leave as null for free-entry tournaments.
   const tournaments = [
-    { id:'t1', name:'Squad Showdown', mode:'Squad · Bermuda', fee:'₹200 / team', slots:'9 / 12', prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/J3cXjGyz" },
-    { id:'t2', name:'Duo Blitz Cup', mode:'Duo · Purgatory', fee:'₹100 / team', slots:'18 / 24', prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/MBn3WBAV" },
-    { id:'t3', name:'Solo Sniper Series', mode:'Solo · Kalahari', fee:'Free entry', slots:'40 / 48', prize:'₹1,000', status:'open', paymentLink:null },
-    { id:'t4', name:'Clash Squad Weekly', mode:'Squad · CS Mode', fee:'₹150 / team', slots:'12 / 12', prize:'₹1,500', status:'closed', paymentLink:null },
-    { id:'t5', name:'Booyah Invitational', mode:'Squad · Bermuda', fee:'₹500 / team', slots:'12 / 12', prize:'₹5,000', status:'live', paymentLink:null },
+    { id:'t1', name:'Squad Showdown', mode:'Squad · Bermuda', fee:'₹200 / team', capacity:12, prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/bD4TI5AX" },
+    { id:'t2', name:'Duo Blitz Cup', mode:'Duo · Purgatory', fee:'₹100 / team', capacity:24, prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/MBn3WBAV" },
+    { id:'t3', name:'Solo Sniper Series', mode:'Solo · Kalahari', fee:'Free entry', capacity:48, prize:'₹1,000', status:'open', paymentLink:null },
+    { id:'t4', name:'Clash Squad Weekly', mode:'Squad · CS Mode', fee:'₹150 / team', capacity:12, prize:'₹1,500', status:'open', paymentLink:null },
+    { id:'t5', name:'Booyah Invitational', mode:'Squad · Bermuda', fee:'₹500 / team', capacity:12, prize:'₹5,000', status:'live', paymentLink:null },
   ];
 
   const leaderboard = [
@@ -396,13 +396,13 @@
       </div>
       <div>
         <div class="t-col-label">Slots filled</div>
-        <div class="t-col-val">${t.slots}</div>
+        <div class="t-col-val" data-slots-for="${t.id}">– / ${t.capacity}</div>
       </div>
       <div>
         <div class="t-col-label">Prize pool</div>
         <div class="t-col-val">${t.prize}</div>
       </div>
-      <div><span class="status-pill ${statusMap[t.status]}">${statusLabel[t.status]}</span></div>
+      <div><span class="status-pill ${statusMap[t.status]}" data-status-for="${t.id}">${statusLabel[t.status]}</span></div>
     `;
     tList.appendChild(row);
 
@@ -412,9 +412,46 @@
       opt.textContent = `${t.name} — ${t.fee}`;
       opt.dataset.fee = t.fee;
       opt.dataset.paymentLink = t.paymentLink || '';
+      opt.dataset.tournamentId = t.id;
       tourneySelect.appendChild(opt);
     }
   });
+
+  // ----- Live slot counts from real registrations -----
+  // A tournament counts as full once registrations reach its capacity, and
+  // the register form blocks new sign-ups for it once that happens.
+  const liveCounts = {}; // { tournamentId: count }
+
+  async function refreshSlotCounts(){
+    if (!dbConfigured) return;
+    for (const t of tournaments) {
+      const { count, error } = await supabaseClient
+        .from('registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament', t.name);
+
+      if (error) continue; // leave placeholder if this fails, don't break the page
+      liveCounts[t.id] = count || 0;
+
+      const slotsEl = document.querySelector(`[data-slots-for="${t.id}"]`);
+      const statusEl = document.querySelector(`[data-status-for="${t.id}"]`);
+      const isFull = count >= t.capacity;
+
+      if (slotsEl) slotsEl.textContent = `${count} / ${t.capacity}`;
+      if (statusEl) {
+        statusEl.textContent = isFull ? 'Full' : (t.status === 'live' ? 'Live now' : 'Open');
+        statusEl.className = `status-pill ${isFull ? 'status-closed' : statusMap[t.status]}`;
+      }
+
+      // Remove from the registration dropdown if it just became full
+      if (isFull) {
+        const opt = tourneySelect.querySelector(`option[data-tournament-id="${t.id}"]`);
+        if (opt) opt.remove();
+      }
+    }
+    updateFeeNote();
+  }
+  refreshSlotCounts();
 
   const feeNote = document.getElementById('feeNote');
   function updateFeeNote(){
@@ -446,6 +483,25 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting...';
 
+    // Re-check capacity right before saving, in case someone else grabbed
+    // the last slot in the moments since the page loaded.
+    const selectedTournament = tournaments.find(t => t.id === tourneyOpt?.dataset.tournamentId);
+    if (selectedTournament) {
+      const { count: freshCount, error: countError } = await supabaseClient
+        .from('registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament', selectedTournament.name);
+
+      if (!countError && freshCount >= selectedTournament.capacity) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Confirm registration';
+        box.style.display = 'block';
+        box.innerHTML = `<b>Sorry \u2014 that bracket just filled up.</b> ${tourneyName} reached its ${selectedTournament.capacity}-team limit moments ago. Please pick another tournament above.`;
+        refreshSlotCounts();
+        return;
+      }
+    }
+
     const { error } = await supabaseClient.from('registrations').insert({
       team_name: teamName,
       tournament: tourneyName,
@@ -475,6 +531,7 @@
     }
     e.target.reset();
     updateFeeNote();
+    refreshSlotCounts();
   });
 
   // ----- Leaderboard -----
