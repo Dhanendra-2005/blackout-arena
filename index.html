@@ -252,6 +252,12 @@
         </ul>
       </div>
       <form class="reg-form" id="regForm">
+        <!-- Honeypot: hidden from real visitors via CSS. Bots that auto-fill every
+             field will trip this; humans never see or touch it. -->
+        <div style="position:absolute; left:-9999px; opacity:0;" aria-hidden="true">
+          <label for="websiteUrl">Leave this field empty</label>
+          <input id="websiteUrl" tabindex="-1" autocomplete="off">
+        </div>
         <div class="field-row">
           <div>
             <label for="teamName">Team name</label>
@@ -347,7 +353,9 @@
   // 2. Run the SQL in registrations-schema.sql (provided alongside this file)
   // 3. Paste your Project URL and anon public key below (Project Settings -> API)
   const SUPABASE_URL = "https://ysglmwjdvbtmbibokbnv.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzZ2xtd2pkdmJ0bWJpYm9rYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5Mzg3OTIsImV4cCI6MjEwNDUxNDc5Mn0._prv2ph7f1y2iJ_PiAQzxt8ykSEUB0-5XSVsb5Inujk";
+  const SUPABASE_ANON_KEY = "
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzZ2xtd2pkdmJ0bWJpYm9rYm52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5Mzg3OTIsImV4cCI6MjEwNDUxNDc5Mn0._prv2ph7f1y2iJ_PiAQzxt8ykSEUB0-5XSVsb5Inujk
+";
 
   let supabaseClient = null;
   const dbConfigured = !SUPABASE_URL.startsWith("PASTE_") && !SUPABASE_ANON_KEY.startsWith("PASTE_");
@@ -360,7 +368,7 @@
   // at dashboard.razorpay.com -> Payment Links -> + Create Payment Link).
   // Leave as null for free-entry tournaments.
   const tournaments = [
-    { id:'t1', name:'Squad Showdown', mode:'Squad · Bermuda', fee:'₹200 / team', capacity:12, prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/J3cXjGyz" },
+    { id:'t1', name:'Squad Showdown', mode:'Squad · Bermuda', fee:'₹200 / team', capacity:12, prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/bD4TI5AX" },
     { id:'t2', name:'Duo Blitz Cup', mode:'Duo · Purgatory', fee:'₹100 / team', capacity:24, prize:'₹2,000', status:'open', paymentLink:"https://rzp.io/rzp/MBn3WBAV" },
     { id:'t3', name:'Solo Sniper Series', mode:'Solo · Kalahari', fee:'Free entry', capacity:48, prize:'₹1,000', status:'open', paymentLink:null },
     { id:'t4', name:'Clash Squad Weekly', mode:'Squad · CS Mode', fee:'₹150 / team', capacity:12, prize:'₹1,500', status:'open', paymentLink:null },
@@ -473,6 +481,17 @@
     const leaderName = document.getElementById('leaderName').value.trim();
     const leaderContact = document.getElementById('leaderContact').value.trim();
     const uids = document.getElementById('uids').value.trim();
+    const honeypot = document.getElementById('websiteUrl').value.trim();
+
+    // Bots that auto-fill every field on a form will fill this hidden one too.
+    // Real visitors never see it, so any value here means it's not a person.
+    // Show a normal-looking success message so the bot doesn't learn to skip this field.
+    if (honeypot) {
+      box.style.display = 'block';
+      box.innerHTML = `<b>Registration received.</b> ${teamName || 'Your team'} is on the list for ${tourneyName}.`;
+      e.target.reset();
+      return;
+    }
 
     if (!dbConfigured) {
       box.style.display = 'block';
@@ -482,6 +501,23 @@
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting...';
+
+    // Block the same team name from registering twice for the same tournament
+    // (case-insensitive, so "Ember Squad" and "ember squad" count as the same team).
+    const { data: existingTeam, error: dupCheckError } = await supabaseClient
+      .from('registrations')
+      .select('id')
+      .eq('tournament', tourneyName)
+      .ilike('team_name', teamName)
+      .limit(1);
+
+    if (!dupCheckError && existingTeam && existingTeam.length > 0) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Confirm registration';
+      box.style.display = 'block';
+      box.innerHTML = `<b>Already registered.</b> A team named "${teamName}" is already signed up for ${tourneyName}. If this is you and you need to change details, contact the organizer directly rather than submitting again.`;
+      return;
+    }
 
     // Re-check capacity right before saving, in case someone else grabbed
     // the last slot in the moments since the page loaded.
